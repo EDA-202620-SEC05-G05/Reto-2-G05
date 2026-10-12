@@ -324,20 +324,137 @@ def req_4(catalog):
     pass
 
 
-def req_5(catalog):
+def req_5(catalog, n, country, start_date, end_date):
     """
-    Retorna el resultado del requerimiento 5
+    Req 5: top N productos por recaudo en un país y rango de fechas.
+ 
+    Hash: by_country (Linear Probing) para el país y un mapa Separate
+    Chaining temporal product -> acumulados (pedidos, cajas, recaudo, etc.).
+    Complejidad: O(k) para filtrar/acumular + O(p log p) merge sort de los p
+    productos distintos (p << k).
     """
-    # TODO: Modificar el requerimiento 5
-    pass
-
-def req_6(catalog):
+    start = get_time()
+ 
+    d1 = start_date.strip()
+    d2 = end_date.strip()
+    bucket = lp.get(catalog["by_country"], country.strip())
+    acc = sc.new_map(50, 4)
+    total_orders = 0
+    total_amount = 0.0
+    if bucket is not None:
+        for i in range(lt.size(bucket)):
+            o = lt.get_element(bucket, i)
+            if d1 <= o["Order_Date"] <= d2:
+                total_orders += 1
+                total_amount += o["Amount"]
+                a = sc.get(acc, o["Product"])
+                if a is None:
+                    a = {"Product": o["Product"], "orders": 0, "boxes": 0,
+                         "revenue": 0.0, "sum_price": 0.0, "sum_discount": 0.0,
+                         "marketing": 0.0}
+                    sc.put(acc, o["Product"], a)
+                a["orders"] += 1
+                a["boxes"] += o["Boxes_Shipped"]
+                a["revenue"] += o["Amount"]
+                a["sum_price"] += o["Price_per_Box"]
+                a["sum_discount"] += o["Discount_Pct"]
+                a["marketing"] += o["Marketing_Spend"]
+ 
+    products = sc.value_set(acc)
+    distinct = lt.size(products)
+    lt.merge_sort(products, _crit_req5)
+ 
+    top = lt.new_list()
+    for i in range(min(max(int(n), 0), distinct)):
+        a = lt.get_element(products, i)
+        lt.add_last(top, {
+            "Product": a["Product"],
+            "orders": a["orders"],
+            "boxes": a["boxes"],
+            "revenue": a["revenue"],
+            "avg_price_per_box": a["sum_price"] / a["orders"],
+            "avg_discount_pct": a["sum_discount"] / a["orders"],
+            "marketing": a["marketing"],
+        })
+ 
+    end = get_time()
+    return {
+        "time_ms": delta_time(start, end),
+        "total_orders": total_orders,
+        "distinct_products": distinct,
+        "total_amount": total_amount,
+        "top": top,
+    }
+ 
+ 
+def req_6(catalog, n, product, start_date, end_date):
     """
-    Retorna el resultado del requerimiento 6
+    Req 6: top N países por eficiencia de mercadeo de un producto en un rango
+    de fechas. Eficiencia = sum(Amount) / sum(Marketing_Spend); los países con
+    sum(Marketing_Spend) == 0 no entran al ranking.
+ 
+    Hash: by_product (Linear Probing) para el producto y un mapa Separate
+    Chaining temporal country -> acumulados.
+    Complejidad: O(k) + O(c log c) merge sort de los c países (c << k).
     """
-    # TODO: Modificar el requerimiento 6
-    pass
-
+    start = get_time()
+ 
+    d1 = start_date.strip()
+    d2 = end_date.strip()
+    bucket = lp.get(catalog["by_product"], product.strip())
+    acc = sc.new_map(50, 4)
+    total_orders = 0
+    total_amount = 0.0
+    total_marketing = 0.0
+    if bucket is not None:
+        for i in range(lt.size(bucket)):
+            o = lt.get_element(bucket, i)
+            if d1 <= o["Order_Date"] <= d2:
+                total_orders += 1
+                total_amount += o["Amount"]
+                total_marketing += o["Marketing_Spend"]
+                a = sc.get(acc, o["Country"])
+                if a is None:
+                    a = {"Country": o["Country"], "orders": 0, "amount": 0.0,
+                         "marketing": 0.0, "boxes": 0, "sum_price": 0.0}
+                    sc.put(acc, o["Country"], a)
+                a["orders"] += 1
+                a["amount"] += o["Amount"]
+                a["marketing"] += o["Marketing_Spend"]
+                a["boxes"] += o["Boxes_Shipped"]
+                a["sum_price"] += o["Price_per_Box"]
+ 
+    countries = sc.value_set(acc)
+    distinct = lt.size(countries)
+ 
+    ranked = lt.new_list()
+    for i in range(distinct):
+        a = lt.get_element(countries, i)
+        if a["marketing"] != 0:
+            lt.add_last(ranked, {
+                "Country": a["Country"],
+                "orders": a["orders"],
+                "amount": a["amount"],
+                "marketing": a["marketing"],
+                "boxes": a["boxes"],
+                "avg_price_per_box": a["sum_price"] / a["orders"],
+                "efficiency": a["amount"] / a["marketing"],
+            })
+    lt.merge_sort(ranked, _crit_req6)
+ 
+    top = lt.new_list()
+    for i in range(min(max(int(n), 0), lt.size(ranked))):
+        lt.add_last(top, lt.get_element(ranked, i))
+ 
+    end = get_time()
+    return {
+        "time_ms": delta_time(start, end),
+        "total_orders": total_orders,
+        "distinct_countries": distinct,
+        "total_amount": total_amount,
+        "total_marketing": total_marketing,
+        "top": top,
+    }
 
 # Funciones para medir tiempos de ejecucion
 
