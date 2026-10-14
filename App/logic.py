@@ -300,12 +300,72 @@ def req_1(catalog, year, month, min_discount, max_discount):
     }
 
 
-def req_2(catalog):
+def req_2(catalog, country, min_boxes, max_boxes):
     """
-    Retorna el resultado del requerimiento 2
+    Req 2: Pedidos por país y rango de cajas enviadas (extremos incluidos).
+    Hash: by_country (Linear Probing), llave "Country" -> acceso O(1) al país.
     """
-    # TODO: Modificar el requerimiento 2
-    pass
+    start = get_time()
+
+    bucket = lp.get(catalog["by_country"], country.strip())
+    filtered = lt.new_list()
+    
+    total_orders = 0
+    sum_marketing = 0.0
+    sum_amount = 0.0
+    
+    # Mapa temporal con Separate Chaining para contar frecuencias de productos
+    product_freqs = sc.new_map(50, 4)
+
+    if bucket is not None:
+        for i in range(lt.size(bucket)):
+            o = lt.get_element(bucket, i)
+            if int(min_boxes) <= o["Boxes_Shipped"] <= int(max_boxes):
+                lt.add_last(filtered, o)
+                total_orders += 1
+                sum_marketing += o["Marketing_Spend"]
+                sum_amount += o["Amount"]
+                
+                # Conteo de frecuencia de productos
+                prod_name = o["Product"]
+                freq_entry = sc.get(product_freqs, prod_name)
+                if freq_entry is None:
+                    sc.put(product_freqs, prod_name, {"Product": prod_name, "count": 1})
+                else:
+                    freq_entry["count"] += 1
+
+    # Determinar el producto más frecuente con desempate alfabético
+    prods_list = sc.value_set(product_freqs)
+    distinct_products = lt.size(prods_list)
+    
+    most_frequent_product = "N/A"
+    max_freq = -1
+    for i in range(distinct_products):
+        p_data = lt.get_element(prods_list, i)
+        if p_data["count"] > max_freq:
+            max_freq = p_data["count"]
+            most_frequent_product = p_data["Product"]
+        elif p_data["count"] == max_freq:
+            if p_data["Product"] < most_frequent_product:
+                most_frequent_product = p_data["Product"]
+
+    # Ordenamiento utilizando _crit_req2 provisto
+    lt.merge_sort(filtered, _crit_req2)
+    count = lt.size(filtered)
+    shown = _first_last(filtered)
+
+    end = get_time()
+    return {
+        "time_ms": delta_time(start, end),
+        "count": count,
+        "distinct_products": distinct_products,
+        "avg_marketing_spend": _safe_div(sum_marketing, count),
+        "avg_amount": _safe_div(sum_amount, count),
+        "most_frequent_product": most_frequent_product,
+        "most_frequent_product_count": max_freq if count > 0 else 0,
+        "orders": shown,
+    }
+
 
 
 def req_3(catalog):
@@ -316,13 +376,61 @@ def req_3(catalog):
     pass
 
 
-def req_4(catalog):
+def req_4(catalog, product, country):
     """
-    Retorna el resultado del requerimiento 4
+    Req 4: Precio promedio y top 2 pedidos por monto para una combinación Producto-País.
+    Hash: by_product (Linear Probing) para acceso O(1) al producto.
     """
-    # TODO: Modificar el requerimiento 4
-    pass
+    start = get_time()
 
+    prod_key = product.strip()
+    target_country = country.strip()
+    
+    bucket = lp.get(catalog["by_product"], prod_key)
+    filtered = lt.new_list()
+    
+    total_orders = 0
+    sum_price = 0.0
+    sum_discount = 0.0
+    sum_marketing = 0.0
+    sum_boxes = 0
+
+    if bucket is not None:
+        for i in range(lt.size(bucket)):
+            o = lt.get_element(bucket, i)
+            if o["Country"].strip() == target_country:
+                lt.add_last(filtered, o)
+                total_orders += 1
+                sum_price += o["Price_per_Box"]
+                sum_discount += o["Discount_Pct"]
+                sum_marketing += o["Marketing_Spend"]
+                sum_boxes += o["Boxes_Shipped"]
+
+    # Ordenamiento utilizando _crit_req4 provisto
+    lt.merge_sort(filtered, _crit_req4)
+
+    top_2 = lt.new_list()
+    limit = min(2, lt.size(filtered))
+    for i in range(limit):
+        o = lt.get_element(filtered, i)
+        lt.add_last(top_2, {
+            "Order_ID": o["Order_ID"],
+            "Channel": o["Channel"],
+            "Order_Date": o["Order_Date"],
+            "Boxes_Shipped": o["Boxes_Shipped"],
+            "Amount": o["Amount"]
+        })
+
+    end = get_time()
+    return {
+        "time_ms": delta_time(start, end),
+        "count": total_orders,
+        "avg_price_per_box": _safe_div(sum_price, total_orders),
+        "avg_discount_pct": _safe_div(sum_discount, total_orders),
+        "avg_marketing_spend": _safe_div(sum_marketing, total_orders),
+        "avg_boxes_shipped": _safe_div(sum_boxes, total_orders),
+        "top": top_2,
+    }
 
 def req_5(catalog, n, country, start_date, end_date):
     """
