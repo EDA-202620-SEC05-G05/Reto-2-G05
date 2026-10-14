@@ -314,7 +314,6 @@ def req_2(catalog, country, min_boxes, max_boxes):
     sum_marketing = 0.0
     sum_amount = 0.0
     
-    # Mapa temporal con Separate Chaining para contar frecuencias de productos
     product_freqs = sc.new_map(50, 4)
 
     if bucket is not None:
@@ -326,7 +325,7 @@ def req_2(catalog, country, min_boxes, max_boxes):
                 sum_marketing += o["Marketing_Spend"]
                 sum_amount += o["Amount"]
                 
-                # Conteo de frecuencia de productos
+
                 prod_name = o["Product"]
                 freq_entry = sc.get(product_freqs, prod_name)
                 if freq_entry is None:
@@ -334,7 +333,6 @@ def req_2(catalog, country, min_boxes, max_boxes):
                 else:
                     freq_entry["count"] += 1
 
-    # Determinar el producto más frecuente con desempate alfabético
     prods_list = sc.value_set(product_freqs)
     distinct_products = lt.size(prods_list)
     
@@ -349,7 +347,7 @@ def req_2(catalog, country, min_boxes, max_boxes):
             if p_data["Product"] < most_frequent_product:
                 most_frequent_product = p_data["Product"]
 
-    # Ordenamiento utilizando _crit_req2 provisto
+
     lt.merge_sort(filtered, _crit_req2)
     count = lt.size(filtered)
     shown = _first_last(filtered)
@@ -406,7 +404,7 @@ def req_4(catalog, product, country):
                 sum_marketing += o["Marketing_Spend"]
                 sum_boxes += o["Boxes_Shipped"]
 
-    # Ordenamiento utilizando _crit_req4 provisto
+
     lt.merge_sort(filtered, _crit_req4)
 
     top_2 = lt.new_list()
