@@ -253,10 +253,26 @@ def print_req_1(control):
 
 def print_req_2(control):
     """
-        Función que imprime la solución del Requerimiento 2 en consola
+    Función que imprime la solución del Requerimiento 2 en consola
     """
-    # TODO: Imprimir el resultado del requerimiento 2
-    pass
+    country = ask_text("País (Country): ")
+    min_boxes = ask_int("Número mínimo de cajas enviadas: ")
+    max_boxes = ask_int("Número máximo de cajas enviadas: ")
+
+    r = logic.req_2(control, country, min_boxes, max_boxes)
+
+    print("\nTiempo de ejecución: " + ms(r["time_ms"]))
+    print("Pedidos que cumplen el filtro: " + str(r["count"]))
+    print("Productos diferentes encontrados: " + str(r["distinct_products"]))
+    print("Promedio de Marketing_Spend: " + money(r["avg_marketing_spend"]))
+    print("Promedio de Amount: " + money(r["avg_amount"]))
+    print(f"Producto más frecuente: {r['most_frequent_product']} (Pedidos: {r['most_frequent_product_count']})")
+    
+    if r["count"] > 20:
+        print("\n(Se muestran los primeros 10 y los últimos 10 pedidos)")
+    print()
+    print_table(r["orders"], COLS_REQ_2, 10 if r["count"] > 20 else None)
+    print()
 
 
 def print_req_3(control):
@@ -269,10 +285,22 @@ def print_req_3(control):
 
 def print_req_4(control):
     """
-        Función que imprime la solución del Requerimiento 4 en consola
+    Función que imprime la solución del Requerimiento 4 en consola
     """
-    # TODO: Imprimir el resultado del requerimiento 4
-    pass
+    product = ask_text("Producto (Product): ")
+    country = ask_text("País (Country): ")
+
+    r = logic.req_4(control, product, country)
+
+    print("\nTiempo de ejecución: " + ms(r["time_ms"]))
+    print("Pedidos que cumplen el filtro: " + str(r["count"]))
+    print("Precio promedio de Price_per_Box: " + money(r["avg_price_per_box"]))
+    print("Promedio de Discount Pct: " + str(r["avg_discount_pct"]) + "%")
+    print("Promedio de Marketing_Spend: " + money(r["avg_marketing_spend"]))
+    print("Promedio de Boxes_Shipped: " + str(r["avg_boxes_shipped"]))
+    print()
+    print_table(r["top"], COLS_REQ_4)
+    print()
 
 
 def print_req_5(control):
