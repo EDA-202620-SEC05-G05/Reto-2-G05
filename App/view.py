@@ -22,17 +22,25 @@ DATA_FILES = {
 # Utilidades de entrada y de impresión
 # ---------------------------------------------------------------------------
  
-def data_path(filename):
-    """
-    Busca el archivo en Data/Datos (relativa a este archivo, sin rutas absolutas).
-    """
+def data_folder():
+    """Retorna la carpeta Data/Datos (relativa a este archivo). None si no existe."""
     base = os.path.dirname(os.path.abspath(__file__))
     for folder in ("Data", "data"):
         for root in (os.path.join(base, ".."), base):
-            path = os.path.join(root, folder, "Datos", filename)
-            if os.path.exists(path):
+            path = os.path.join(root, folder, "Datos")
+            if os.path.isdir(path):
                 return path
-    return os.path.join(base, "..", "Data", "Datos", filename)
+    return None
+
+
+def list_data_files():
+    """Lista los .csv que existen en Data/Datos, de menor a mayor tamaño."""
+    folder = data_folder()
+    if folder is None:
+        return None, []
+    files = [f for f in os.listdir(folder) if f.lower().endswith(".csv")]
+    files.sort(key=lambda f: (os.path.getsize(os.path.join(folder, f)), f))
+    return folder, files
  
  
 def ask_int(message):
@@ -191,22 +199,27 @@ def load_data(control):
     """
     Carga los datos y muestra el reporte de carga
     """
-    print("Archivos disponibles:")
-    for key in DATA_FILES:
-        print("  " + key + "- " + DATA_FILES[key])
+    folder, files = list_data_files()
+    if folder is None:
+        print("No se encontró la carpeta Data/Datos.\n")
+        return False
+    if len(files) == 0:
+        print("No hay archivos .csv en la carpeta Data/Datos.\n")
+        return False
+
+    print("Archivos disponibles (de menor a mayor tamaño):")
+    for i in range(len(files)):
+        print("  " + str(i + 1) + "- " + files[i])
     option = input("Seleccione el archivo a cargar: ").strip()
-    if option not in DATA_FILES:
+    if not option.isdigit() or not 1 <= int(option) <= len(files):
         print("Opción de archivo inválida.\n")
         return False
- 
-    path = data_path(DATA_FILES[option])
-    if not os.path.exists(path):
-        print("No se encontró el archivo " + DATA_FILES[option] + " en la carpeta Data/Datos.\n")
-        return False
- 
+
+    path = os.path.join(folder, files[int(option) - 1])
+
     print("Cargando información de los archivos ....\n")
     report = logic.load_data(control, path)
- 
+
     print("Tiempo de carga: " + ms(report["time_ms"]))
     print("Total de pedidos cargados: " + str(report["total_orders"]))
     print("\nPedidos por canal de venta:")
@@ -214,12 +227,12 @@ def load_data(control):
                 [("Channel", "Channel", None), ("Pedidos", "count", None)])
     print("\nFecha más antigua: " + str(report["oldest_date"]))
     print("Fecha más reciente: " + str(report["newest_date"]))
- 
+
     print("\nPedido con menor Amount:")
     print_table(one_row(report["min_amount_order"]), COLS_LOAD)
     print("\nPedido con mayor Amount:")
     print_table(one_row(report["max_amount_order"]), COLS_LOAD)
- 
+
     print("\nPrimeros 5 pedidos (orden descendente por Amount):")
     print_table(report["first_5"], COLS_LOAD)
     print("\nÚltimos 5 pedidos (orden descendente por Amount):")
