@@ -174,7 +174,7 @@ def _crit_req6(a, b):
  
  
 # ---------------------------------------------------------------------------
-# Carga de datos
+# Carga de datos mejor caso o(n), base o(n), peor o(n*d) d llaves distintas de una tablapasa si todas colisionan con el merge es o(n log n)
 # ---------------------------------------------------------------------------
  
 def load_data(catalog, filename):
@@ -257,7 +257,7 @@ def load_data(catalog, filename):
 
 
 # ---------------------------------------------------------------------------
-# Requerimientos
+# Requerimientos mejor o(1) no existe el mes, normal o(k + m log m) k pedidos del mes y ordenar los m que pasaron, peor o(n log n) todos son de ese mes y pasan filtro
 # ---------------------------------------------------------------------------
  
 def req_1(catalog, year, month, min_discount, max_discount):
@@ -373,7 +373,7 @@ def req_3(catalog):
     # TODO: Modificar el requerimiento 3
     pass
 
-
+# mejor caso o(1) combinacion no existe, normaal o(k) hay q leer todos los pedidos de la combinacion, peor o(n) todos son esa combinacion
 def req_4(catalog, product, country):
     """
     Req 4: Precio promedio y top 2 pedidos por monto para una combinación Producto-País.
@@ -430,6 +430,7 @@ def req_4(catalog, product, country):
         "top": top_2,
     }
 
+#mejor caso o(1) pais no existe, normal o(k + plogp) recorrer k pedidos del pais y ordenar los p productos, peor o(k*p) si la tabla general todos colisionan
 def req_5(catalog, n, country, start_date, end_date):
     """
     Req 5: top N productos por recaudo en un país y rango de fechas.
@@ -492,7 +493,8 @@ def req_5(catalog, n, country, start_date, end_date):
         "top": top,
     }
  
- 
+
+#mejor caso o(1) producto no existe, normal o(k + c log c) recorrer los k pedidos y ordenar los c paises, peor o(k*c) igual que el 5 
 def req_6(catalog, n, product, start_date, end_date):
     """
     Req 6: top N países por eficiencia de mercadeo de un producto en un rango
